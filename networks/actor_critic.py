@@ -27,31 +27,29 @@ def bootstrapped_discount_rewards(r, gamma, done, next_values):
 class Policy(torch.nn.Module):
     def __init__(self, state_space, action_space):
         super().__init__()
-        self.state_space = state_space
+        self.state_space = state_space #dimension of state
         self.action_space = action_space
         self.hidden = 64
         self.tanh = torch.nn.Tanh()
 
         """
-            Actor network
+            Actor and Critic network
+            -> same structure, only the final part changes
         """
-        self.fc1_actor = torch.nn.Linear(state_space, self.hidden)
-        self.fc2_actor = torch.nn.Linear(self.hidden, self.hidden)
-        self.fc3_actor_mean = torch.nn.Linear(self.hidden, action_space)
-        
+        self.embedding_ac = torch.nn.Linear(state_space, 512)
+        self.relu = torch.nn.ReLU()
+        self.fc1_ac = torch.nn.Linear(512, 2048)
+        self.lstm_ac = torch.nn.LSTM(2048, 1024, batch_first=True) #LSTM module specifies the dimension order of input tensors: (batch_size, sequence_length, input_size)
+       
+        self.fc2_actor = torch.nn.Linear(1024, action_space)
+        self.fc2_critic = torch.nn.Linear(1024, 1)
+
+
+    
         # Learned standard deviation for exploration at training time 
         self.sigma_activation = F.softplus
         init_sigma = 0.5
         self.sigma = torch.nn.Parameter(torch.zeros(self.action_space)+init_sigma)
-
-
-        """
-            Critic network
-        """
-        # TASK 3: critic network for actor-critic algorithm
-        self.fc1_critic = torch.nn.Linear(state_space, self.hidden)
-        self.fc2_critic = torch.nn.Linear(self.hidden, self.hidden)
-        self.fc3_critic = torch.nn.Linear(self.hidden, 1)
 
         self.init_weights()
 
@@ -64,26 +62,29 @@ class Policy(torch.nn.Module):
 
 
     def forward(self, x):
+        
+        x = self.embedding_ac(x)
+        x = torch.sum(x, dim=1)  # Summing over the observations
+        x = self.relu(x)
+        x = self.fc1_ac(x)
+        x = self.relu(x)
+        x, _ = self.lstm_ac(x.unsqueeze(0))  # Adding batch dimension for LSTM
+        
         """
             Actor
         """
-        x_actor = self.tanh(self.fc1_actor(x))
-        x_actor = self.tanh(self.fc2_actor(x_actor))
-        action_mean = self.fc3_actor_mean(x_actor)
+        action_mean = self.fc2_actor(x.squeeze(0))
+        action_sigma = self.sigma_activation(self.sigma)
 
-        sigma = self.sigma_activation(self.sigma)
-        normal_dist = Normal(action_mean, sigma)
+        normal_dist = Normal(action_mean, action_sigma)
 
 
         """
             Critic
         """
-        # TASK 3: forward in the critic network
-        x_critic = self.tanh(self.fc1_critic(x))
-        x_critic = self.tanh(self.fc2_critic(x_critic))
-        value = self.fc3_critic(x_critic)
+        value = self.fc3_critic(x.squeeze(0))
         
-        return normal_dist, value
+        return normal_dist,  #action_mean, action_sigma
 
 
 class Agent(object):
