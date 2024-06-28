@@ -84,7 +84,7 @@ class Policy(torch.nn.Module):
         """
         value = self.fc3_critic(x.squeeze(0))
         
-        return normal_dist,  #action_mean, action_sigma
+        return normal_dist,value#action_mean, action_sigma
 
 
 class Agent(object):
