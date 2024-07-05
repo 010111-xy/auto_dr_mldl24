@@ -39,21 +39,26 @@ class Randomizer:
         """
         self.parallel_envs = parallel_envs
 
+        #INITALIZING RANDOMIZATION PARAMETERS
+        ## Randomizable parameters from the environment
         randomizable_params = self.parallel_envs.env_method(
             "randomizable_parameters", indices=0
         )[0]
         self.randomized_parameters = self._init_params(randomizable_params)
+        ## create a performance buffer to store and evaluate env performance
         self.buffer = RandomizationPerformanceBuffer(
             randomizable_params, buffer_size=buffer_size
         )
 
+        #STORING PARAMETERS
         self.evaluation_probability = evaluation_probability
         self.buffer_size = buffer_size
         self.delta = delta
 
+        #Initialize a list to keep track of sampled boundaries for each env
         self.sampled_boundaries = [None] * parallel_envs.num_envs
 
-        # performance
+        # set performance thresholds
         self.lower_performance_threshold = performance_threshold_lower
         self.upper_performance_threshold = performance_threshold_upper
         pass
@@ -61,7 +66,7 @@ class Randomizer:
     @staticmethod
     def _init_params(params: List[RandomizationParameter]) -> dict:
         """
-        Convert a list of parameters to dict.
+        Convert a list of parameters to dict for easier access
 
         Args:
             params (List[RandomizationParameter]): A list of randomized parameters.
@@ -132,7 +137,7 @@ class Randomizer:
 
     def _get_task(self) -> Tuple:
         """
-        Get randomized parameter values.
+        Generates a set of randomized parameters for a task
 
         Returns:
           Tuple
@@ -174,7 +179,7 @@ class Randomizer:
 
     def randomize_all(self) -> None:
         """
-        Sample tasks for each environment.
+        Randomize parameters for all parallel environments.
 
         Returns:
           None
@@ -288,6 +293,7 @@ class Randomizer:
     def info(self) -> dict:
         """
         Returns info regarding a specific randomizer instance.
+        In particular, it provides access to observation space, action space, number
 
         Returns:
             dict
